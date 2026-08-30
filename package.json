@@ -1,0 +1,46 @@
+{
+  "name": "cavalry-mcp",
+  "version": "0.2.0",
+  "description": "MCP server for controlling Cavalry through its JavaScript API",
+  "type": "module",
+  "bin": {
+    "cavalry-mcp": "src/index.js"
+  },
+  "files": [
+    "src",
+    "vendor",
+    "README.md",
+    "LICENSE",
+    "THIRD_PARTY_LICENSES.md"
+  ],
+  "scripts": {
+    "check": "node --check src/index.js && node --check src/cavalry.js && node --check src/operations.js && node --check src/server.js",
+    "smoke": "node scripts/smoke.js",
+    "smoke:mcp": "node scripts/mcp-smoke.js",
+    "smoke:write": "node scripts/mcp-write-smoke.js",
+    "test": "node --test"
+  },
+  "keywords": [
+    "cavalry",
+    "mcp",
+    "model-context-protocol",
+    "motion-design",
+    "animation"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Kydaix/cavalry-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Kydaix/cavalry-mcp/issues"
+  },
+  "homepage": "https://github.com/Kydaix/cavalry-mcp#readme",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^3.25.0"
+  }
+}
