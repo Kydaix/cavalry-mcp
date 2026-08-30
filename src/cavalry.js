@@ -1,4 +1,4 @@
-import { access, copyFile, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { access, copyFile, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { homedir, platform, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -18,6 +18,58 @@ export const EXPRESSION_TYPES = [
 ];
 
 const delay = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
+
+export function getJavaScriptLogPath(override = process.env.CAVALRY_JS_LOG_PATH) {
+  if (override) return override;
+  if (platform() === "win32") {
+    return join(process.env.APPDATA || join(homedir(), "AppData", "Roaming"), "Cavalry", "logs", "js_log.txt");
+  }
+  if (platform() === "darwin") return join(homedir(), "Library", "Application Support", "Cavalry", "logs", "js_log.txt");
+  return null;
+}
+
+export function parseJavaScriptLogIssues(text) {
+  const issues = new Map();
+  for (const line of text.split(/\r?\n/)) {
+    const match = line.match(/^\[[^\]]+\s(error|warning)\s*\]\s*(.+)$/i);
+    if (!match) continue;
+    const level = match[1].toLowerCase();
+    const message = match[2].trim();
+    const key = `${level}\0${message}`;
+    const issue = issues.get(key) || { level, message, count: 0 };
+    issue.count += 1;
+    issues.set(key, issue);
+  }
+  return [...issues.values()];
+}
+
+async function getJavaScriptLogCheckpoint() {
+  const path = getJavaScriptLogPath();
+  if (!path) return null;
+  try {
+    return { path, offset: (await stat(path)).size };
+  } catch (error) {
+    if (error?.code === "ENOENT") return { path, offset: 0 };
+    throw error;
+  }
+}
+
+async function readJavaScriptLogIssues(checkpoint) {
+  if (!checkpoint) return [];
+  try {
+    const content = await readFile(checkpoint.path);
+    return parseJavaScriptLogIssues(content.subarray(Math.min(checkpoint.offset, content.length)).toString("utf8"));
+  } catch (error) {
+    if (error?.code === "ENOENT") return [];
+    throw error;
+  }
+}
+
+function summarizeJavaScriptLogIssues(issues) {
+  const summary = issues.slice(0, 10).map(issue => `${issue.level}: ${issue.message}${issue.count > 1 ? ` (${issue.count}x)` : ""}`);
+  if (issues.length > 10) summary.push(`and ${issues.length - 10} more`);
+  return summary.join("; ");
+}
 
 export function assertLocalBridgeUrl(value = process.env.CAVALRY_BRIDGE_URL || DEFAULT_BRIDGE_URL) {
   const url = new URL(value);
@@ -95,11 +147,17 @@ export async function executeScript(code, { bridgeUrl, timeoutMs = 10000 } = {})
   const taskDirectory = await mkdtemp(join(tmpdir(), "cavalry-mcp-"));
   const scriptPath = join(taskDirectory, "task.js");
   const resultPath = join(taskDirectory, "result.json");
+  const logCheckpoint = await getJavaScriptLogCheckpoint();
   await writeFile(scriptPath, buildWrappedScript(code, resultPath), "utf8");
 
   try {
     await postToBridge({ type: "script", code: "", path: scriptPath }, bridgeUrl);
-    return await waitForResult(resultPath, timeoutMs);
+    const response = await waitForResult(resultPath, timeoutMs);
+    const issues = await readJavaScriptLogIssues(logCheckpoint);
+    if (issues.length) {
+      return { ok: false, error: `Cavalry JavaScript Console reported ${summarizeJavaScriptLogIssues(issues)}`, consoleIssues: issues };
+    }
+    return response;
   } finally {
     await rm(taskDirectory, { recursive: true, force: true });
   }

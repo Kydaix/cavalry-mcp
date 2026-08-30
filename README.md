@@ -103,10 +103,11 @@ The bridge executes temporary generated adapters, writes structured results, and
 | `CAVALRY_BRIDGE_URL` | `http://127.0.0.1:8080` (loopback hosts only) |
 | `CAVALRY_METADATA_DIR` | Auto-detected Cavalry `assets/MetaData` directory |
 | `CAVALRY_SCRIPTS_DIR` | Auto-detected user Scripts directory |
+| `CAVALRY_JS_LOG_PATH` | Auto-detected Cavalry `logs/js_log.txt` path |
 
 ## Safety
 
-Tool schemas validate input at the MCP boundary. Mutating tools declare MCP safety annotations, saves and renders refuse existing targets unless explicitly allowed, render restores the previous frame, and generic API calls are restricted to installed metadata.
+Tool schemas validate input at the MCP boundary. Mutating tools declare MCP safety annotations, saves and renders refuse existing targets unless explicitly allowed, render restores the previous frame, and generic API calls are restricted to installed metadata. New JavaScript Console errors and warnings fail the active MCP operation instead of being silently reported as success.
 
 An MCP client still has substantial authority over the open Cavalry scene. Keep Stallion on loopback and save important work before approving mutations.
 

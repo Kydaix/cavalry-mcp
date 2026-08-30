@@ -74,7 +74,16 @@ var layerIds = ${js(layerIds)};
 layerIds.forEach(function (id) {
   if (!api.getLayerType(id)) throw new Error("Layer not found: " + id);
 });
-layerIds.forEach(function (id) { api.deleteLayer(id); });
+var requested = {};
+layerIds.forEach(function (id) { requested[id] = true; });
+layerIds.filter(function (id) {
+  var parentId = api.getParent(id);
+  while (parentId) {
+    if (requested[parentId]) return false;
+    parentId = api.getParent(parentId);
+  }
+  return true;
+}).forEach(function (id) { api.deleteLayer(id); });
 return { deleted: layerIds };`);
 }
 

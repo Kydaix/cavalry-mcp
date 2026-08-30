@@ -6,7 +6,15 @@ import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
-import { assertLocalBridgeUrl, buildWrappedScript, findApiFunction, installBridge, searchApiMetadata } from "../src/cavalry.js";
+import {
+  assertLocalBridgeUrl,
+  buildWrappedScript,
+  findApiFunction,
+  getJavaScriptLogPath,
+  installBridge,
+  parseJavaScriptLogIssues,
+  searchApiMetadata
+} from "../src/cavalry.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -46,6 +54,20 @@ test("Cavalry scripts return results through a temporary JSON file", () => {
   assert.match(script, /api\.getFrame\(\)/);
   assert.match(script, /C:\/Temp\/result\.json/);
   assert.match(script, /api\.writeToFile/);
+});
+
+test("Cavalry JavaScript Console issues are deduplicated", () => {
+  const issues = parseJavaScriptLogIssues([
+    "[17:28:36.505 error   ] Attribute not found: font.family",
+    "[17:28:36.554 error   ] Attribute not found: font.family",
+    "[17:28:36.724 warning ] Attribute is not keyframed: null#3.scale",
+    "[17:28:36.730 debug   ] ignored"
+  ].join("\n"));
+  assert.deepEqual(issues, [
+    { level: "error", message: "Attribute not found: font.family", count: 2 },
+    { level: "warning", message: "Attribute is not keyframed: null#3.scale", count: 1 }
+  ]);
+  assert.equal(getJavaScriptLogPath("C:\\Temp\\js_log.txt"), "C:\\Temp\\js_log.txt");
 });
 
 test("installed API metadata is searched literally", async () => {
