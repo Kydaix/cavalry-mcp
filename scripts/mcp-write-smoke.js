@@ -8,6 +8,7 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const imagePath = join(tmpdir(), `cavalry-mcp-write-smoke-${process.pid}.png`);
+const lottiePath = join(tmpdir(), `cavalry-mcp-write-smoke-${process.pid}.json`);
 const client = new Client({ name: "cavalry-mcp-write-smoke", version: "0.2.0" });
 const transport = new StdioClientTransport({
   command: process.execPath,
@@ -97,7 +98,14 @@ try {
     arguments: { path: imagePath, scalePercent: 10, overwrite: true }
   });
   assert.ok(rendered.structuredContent.bytes > 0);
-  console.log(JSON.stringify({ created: createdIds.length, keyframes: keyframes.structuredContent.created.length, connections: 2, expressions: expression.structuredContent.applied.length, renderedBytes: rendered.structuredContent.bytes }, null, 2));
+  const lottie = await client.callTool({
+    name: "cavalry_render_lottie",
+    arguments: { path: lottiePath, overwrite: true }
+  });
+  assert.equal(lottie.isError, undefined);
+  assert.ok(lottie.structuredContent.bytes > 0);
+  createdIds.push(lottie.structuredContent.renderQueueItemId);
+  console.log(JSON.stringify({ created: createdIds.length, keyframes: keyframes.structuredContent.created.length, connections: 2, expressions: expression.structuredContent.applied.length, renderedBytes: rendered.structuredContent.bytes, lottieBytes: lottie.structuredContent.bytes }, null, 2));
 } finally {
   if (connected && createdIds.length) {
     const deleted = await client.callTool({ name: "cavalry_layer_delete", arguments: { layerIds: createdIds } });
@@ -106,4 +114,5 @@ try {
   if (connected) await client.callTool({ name: "cavalry_api_call", arguments: { method: "select", args: [originalSelection] } });
   await client.close();
   await rm(imagePath, { force: true });
+  await rm(lottiePath, { force: true });
 }

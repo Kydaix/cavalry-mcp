@@ -68,6 +68,7 @@ Every successful tool response includes both human-readable text and validated `
 | `cavalry_expression_apply` | Apply JavaScript, SkSL, or render expressions with changed/skipped IDs. |
 | `cavalry_scene_save` | Save safely to the current path or an explicit `.cv` path. |
 | `cavalry_render_frame` | Render and verify a PNG while restoring the playhead. |
+| `cavalry_render_lottie` | Export and verify native Lottie JSON for a composition. |
 | `cavalry_api_search` | Search exact signatures from the installed Cavalry build. |
 | `cavalry_api_call` | Call any installed `api` function directly with JSON arguments. |
 
@@ -94,7 +95,7 @@ MCP client ──stdio──> Cavalry MCP ──HTTP loopback──> Stallion �
                          └── installed API metadata for validation/discovery
 ```
 
-The bridge executes temporary generated adapters, writes structured results, and removes temporary files after every call. No MCP network listener or arbitrary-JavaScript tool is exposed.
+The bridge injects generated adapters directly into Cavalry through `api.exec`. Only the structured result uses a temporary JSON file, which is removed after every call. No desktop mouse/keyboard automation, MCP network listener, or arbitrary-JavaScript tool is exposed.
 
 ## Configuration
 
@@ -108,6 +109,8 @@ The bridge executes temporary generated adapters, writes structured results, and
 ## Safety
 
 Tool schemas validate input at the MCP boundary. Mutating tools declare MCP safety annotations, saves and renders refuse existing targets unless explicitly allowed, render restores the previous frame, and generic API calls are restricted to installed metadata. New JavaScript Console errors and warnings fail the active MCP operation instead of being silently reported as success.
+
+The MCP never drives Cavalry through desktop input. If the installed JavaScript API does not expose an operation, the tool fails explicitly instead of clicking menus or sending keystrokes.
 
 An MCP client still has substantial authority over the open Cavalry scene. Keep Stallion on loopback and save important work before approving mutations.
 

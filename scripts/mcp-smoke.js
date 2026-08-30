@@ -28,6 +28,7 @@ try {
     "cavalry_layer_get",
     "cavalry_layer_update",
     "cavalry_render_frame",
+    "cavalry_render_lottie",
     "cavalry_scene_inspect",
     "cavalry_scene_save",
     "cavalry_status"

@@ -1,4 +1,4 @@
-import { stat } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import {
   EXPRESSION_TYPES,
   executeOperation,
@@ -170,6 +170,27 @@ try {
 }
 return { path: input.path, frame: renderedFrame, scalePercent: input.scalePercent };`, { timeoutMs });
   const file = await stat(path);
+  return { ...result, bytes: file.size };
+}
+
+export async function renderLottie({ path, compositionId, overwrite = false, timeoutMs = 60000 }) {
+  const normalizedPath = pathForCavalry(path);
+  const result = await executeOperation(`
+var input = ${js({ path: normalizedPath, compositionId, overwrite })};
+if (!input.overwrite && api.filePathExists(input.path)) throw new Error("Target Lottie file already exists.");
+var compId = input.compositionId || api.getActiveComp();
+if (api.getLayerType(compId) !== "compNode") throw new Error("Composition not found: " + compId);
+var itemId = api.addRenderQueueItem(compId);
+api.setGenerator(itemId, "generator", "renderLottie");
+api.set(itemId, {
+  fileName: api.getFileNameFromPath(input.path, false),
+  filePath: api.getFolderFromPath(input.path)
+});
+api.stop();
+api.render(itemId);
+return { path: input.path, compositionId: compId, renderQueueItemId: itemId };`, { timeoutMs });
+  const file = await stat(path);
+  JSON.parse(await readFile(path, "utf8"));
   return { ...result, bytes: file.size };
 }
 

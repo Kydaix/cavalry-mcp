@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import {
   assertLocalBridgeUrl,
+  buildBridgeRequest,
   buildWrappedScript,
   findApiFunction,
   getJavaScriptLogPath,
@@ -49,7 +50,15 @@ test("the CLI exposes an npx-compatible install subcommand", async () => {
   }
 });
 
-test("Cavalry scripts return results through a temporary JSON file", () => {
+test("Cavalry operations are injected inline through api.exec", () => {
+  const request = buildBridgeRequest("return { frame: api.getFrame() };", "C:\\Temp\\result.json");
+  assert.equal(request.type, "script");
+  assert.equal(request.path, "");
+  assert.match(request.code, /api\.getFrame\(\)/);
+  assert.match(request.code, /C:\/Temp\/result\.json/);
+});
+
+test("injected Cavalry operations return structured results", () => {
   const script = buildWrappedScript("return { frame: api.getFrame() };", "C:\\Temp\\result.json");
   assert.match(script, /api\.getFrame\(\)/);
   assert.match(script, /C:\/Temp\/result\.json/);

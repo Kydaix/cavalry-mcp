@@ -1,4 +1,4 @@
-import { access, copyFile, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
+import { access, copyFile, mkdir, mkdtemp, readFile, readdir, rm, stat } from "node:fs/promises";
 import { homedir, platform, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -129,6 +129,10 @@ ${code.split("\n").map(line => `      ${line}`).join("\n")}
 `;
 }
 
+export function buildBridgeRequest(code, resultPath) {
+  return { type: "script", code: buildWrappedScript(code, resultPath), path: "" };
+}
+
 async function waitForResult(resultPath, timeoutMs) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
@@ -145,13 +149,11 @@ async function waitForResult(resultPath, timeoutMs) {
 export async function executeScript(code, { bridgeUrl, timeoutMs = 10000 } = {}) {
   if (!code.trim()) throw new Error("code must not be empty.");
   const taskDirectory = await mkdtemp(join(tmpdir(), "cavalry-mcp-"));
-  const scriptPath = join(taskDirectory, "task.js");
   const resultPath = join(taskDirectory, "result.json");
   const logCheckpoint = await getJavaScriptLogCheckpoint();
-  await writeFile(scriptPath, buildWrappedScript(code, resultPath), "utf8");
 
   try {
-    await postToBridge({ type: "script", code: "", path: scriptPath }, bridgeUrl);
+    await postToBridge(buildBridgeRequest(code, resultPath), bridgeUrl);
     const response = await waitForResult(resultPath, timeoutMs);
     const issues = await readJavaScriptLogIssues(logCheckpoint);
     if (issues.length) {

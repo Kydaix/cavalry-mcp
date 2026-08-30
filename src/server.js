@@ -11,6 +11,7 @@ import {
   getLayer,
   inspectScene,
   renderFrame,
+  renderLottie,
   saveScene,
   searchApi,
   setKeyframes,
@@ -224,6 +225,24 @@ export function createServer() {
     },
     annotations: destructive
   }, handle(renderFrame));
+
+  server.registerTool("cavalry_render_lottie", {
+    title: "Render Cavalry Lottie",
+    description: "Export a composition through Cavalry's native renderLottie format and verify the JSON output.",
+    inputSchema: {
+      path: absolutePath(/\.json$/i),
+      compositionId: id.optional(),
+      overwrite: z.boolean().default(false),
+      timeoutMs: z.number().int().min(1000).max(600000).default(60000)
+    },
+    outputSchema: {
+      path: z.string(),
+      compositionId: z.string(),
+      renderQueueItemId: z.string(),
+      bytes: z.number().int().positive()
+    },
+    annotations: destructive
+  }, handle(renderLottie));
 
   server.registerTool("cavalry_api_search", {
     title: "Search installed Cavalry API",
